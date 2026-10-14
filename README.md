@@ -10,11 +10,11 @@
 
 Fill a brief description of this experiment here
 
-<b>Name of Developer | <b> Fill the name of experiment owner here 
+<b>Name of Developer |Pramod Yadav <b> Fill the name of experiment owner here 
 :--|:--|
-<b> Institute | <b>  
-<b> Email id|     <b>  
-<b> Department |  
+<b> Institute |Rajkiya Engineering collage Banda <b>  
+<b> Email id| 25073401130044@recbanda.ac.in   <b>  
+<b> Department |  Information technology
 
 ### Contributors List
 
