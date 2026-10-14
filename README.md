@@ -13,7 +13,7 @@ Fill a brief description of this experiment here
 <b>Name of Developer |Pramod Yadav <b> 
 :--|:--|
 <b> Institute |Rajkiya Engineering collage Banda <b>  
-<b> Email id| 25073401130044@recbanda.ac.in   <b>  
+<b> Email id| 2507340130044@recbanda.ac.in   <b>  
 <b> Department |  Information technology
 
 ### Contributors List
