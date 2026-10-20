@@ -1,13 +1,1196 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<!-- Add CSS at the head of HTML file -->
-    <link rel="stylesheet" href="./css/main.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpO₂ Circuit Emulation and Calibration — 3D Virtual Lab</title>
+    
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Scientific Lab Styles -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-		<!-- Your code goes here-->
 
-	<!-- Add JS at the bottom of HTML file --> 
-        <script src="./js/main.js"></script>
+    <!-- ====================================================================
+         TOP HEADER & ACTION CONTROLS
+         ==================================================================== -->
+    <header class="lab-header">
+        <div class="brand-section">
+            <div class="brand-icon-wrapper">🫀</div>
+            <div class="brand-title">
+                <h1>
+                    SpO₂ Virtual Lab 
+                    <span class="badge-lab">BME v2.5</span>
+                    <span class="badge-educational">Educational Model</span>
+                </h1>
+                <p>Circuit Emulation, Optical Physics, DSP & Empirical Sensor Calibration</p>
+            </div>
+        </div>
+
+        <div class="header-controls">
+            <!-- Global Experiment Control Buttons -->
+            <div class="global-button-group">
+                <button id="btn-global-start" class="btn btn-sm btn-primary" title="Start real-time simulation">▶ Start</button>
+                <button id="btn-global-pause" class="btn btn-sm btn-secondary" title="Pause simulation loop">⏸ Pause</button>
+                <button id="btn-global-resume" class="btn btn-sm btn-secondary" title="Resume simulation loop">⏯ Resume</button>
+                <button id="btn-global-reset" class="btn btn-sm btn-secondary" title="Reset all simulation & circuit parameters">↺ Reset</button>
+            </div>
+
+            <!-- Audio Monitor Controls -->
+            <div class="audio-controls">
+                <button id="btn-audio-mute" class="btn btn-sm btn-secondary" title="Toggle authentic hospital cardiac pulse tone">🔇 Audio Muted</button>
+                <input type="range" id="slider-audio-vol" class="vol-slider" min="0" max="1" step="0.05" value="0.20" title="Audio Volume">
+            </div>
+
+            <!-- Export & Help Action Buttons -->
+            <button id="btn-global-export" class="btn btn-sm btn-secondary" title="Export experimental data as CSV or JSON">📥 Export Results</button>
+            <button id="btn-open-help" class="btn btn-sm btn-secondary" title="Open Beginner Instructions & Lab Guide">❓ Instructions</button>
+        </div>
+    </header>
+
+    <!-- ====================================================================
+         NAVIGATION TABS BAR
+         ==================================================================== -->
+    <nav class="nav-tabs-bar">
+        <button class="nav-tab-btn active" data-tab="tab-home">🏠 Home</button>
+        <button class="nav-tab-btn" data-tab="tab-circuit">⚡ Circuit Lab</button>
+        <button class="nav-tab-btn" data-tab="tab-calibration">📈 Calibration</button>
+        <button class="nav-tab-btn" data-tab="tab-simulation">🔬 Simulation</button>
+        <button class="nav-tab-btn" data-tab="tab-results">📊 Results</button>
+        <button class="nav-tab-btn" data-tab="tab-about">📖 About</button>
+    </nav>
+
+    <!-- ====================================================================
+         REAL-TIME HOSPITAL VITALS TELEMETRY BANNER
+         ==================================================================== -->
+    <section class="patient-monitor-container">
+        <div class="monitor-card" id="hospital-monitor-card">
+            <!-- Target vs Estimated SpO2 -->
+            <div class="vital-metric">
+                <span class="vital-label">Target SpO₂</span>
+                <div class="vital-val" style="color:var(--text-muted); font-size:1.7rem;">
+                    <span id="mon-ref-spo2-val">98.0</span><span class="vital-unit">%</span>
+                </div>
+            </div>
+
+            <div class="vital-metric">
+                <span class="vital-label">Estimated SpO₂ (DSP)</span>
+                <div class="vital-val vital-spo2">
+                    <span id="mon-est-spo2-val">98.0</span><span class="vital-unit">%</span>
+                </div>
+            </div>
+
+            <!-- Pulse Rate -->
+            <div class="vital-metric">
+                <span class="vital-label">
+                    Pulse Rate (PR)
+                    <span id="heart-pulse-icon" class="heart-icon" style="color:var(--red-danger);">❤️</span>
+                </span>
+                <div class="vital-val vital-bpm">
+                    <span id="mon-bpm-val">75</span><span class="vital-unit">BPM</span>
+                </div>
+            </div>
+
+            <!-- Perfusion Index -->
+            <div class="vital-metric">
+                <span class="vital-label">Perfusion Index (PI)</span>
+                <div class="vital-val vital-pi">
+                    <span id="mon-pi-val">2.50%</span>
+                </div>
+            </div>
+
+            <!-- Modulation Ratio R -->
+            <div class="vital-metric">
+                <span class="vital-label">Modulation Ratio (R)</span>
+                <div class="vital-val vital-r">
+                    <span id="mon-r-val">0.480</span>
+                </div>
+            </div>
+
+            <!-- Signal Quality Index -->
+            <div class="vital-metric">
+                <span class="vital-label">Signal Quality (SQI)</span>
+                <div class="vital-val vital-sqi">
+                    <span id="mon-sqi-val">96%</span>
+                </div>
+            </div>
+
+            <!-- Diagnostic Saturation Alert -->
+            <div class="vital-metric" style="min-width:130px;">
+                <span class="vital-label">Hardware Status</span>
+                <div style="margin-top:4px;">
+                    <span id="badge-rail-saturation" class="badge badge-danger" style="display:none;">Op-Amp Clipped</span>
+                    <span class="badge badge-success">Signal Locked</span>
+                </div>
+            </div>
+
+            <!-- Plethysmogram Bar -->
+            <div class="pleth-column">
+                <span class="vital-label" style="font-size:0.65rem;">PLETH</span>
+                <div class="pleth-bar-track">
+                    <div class="pleth-bar-fill" id="mon-pleth-bar"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====================================================================
+         MAIN VIEWPORT CONTENT (6 TABS)
+         ==================================================================== -->
+    <main class="lab-main-content">
+
+        <!-- ================================================================
+             TAB 1: HOME
+             ================================================================ -->
+        <section id="tab-home" class="tab-pane active">
+            <!-- Hero Banner -->
+            <div class="home-hero-banner">
+                <div class="home-hero-text">
+                    <h2>Welcome to the SpO₂ Circuit Emulation & Calibration Virtual Lab</h2>
+                    <p>
+                        An interactive, high-fidelity Biomedical Engineering virtual laboratory designed to emulate the complete analog signal conditioning chain, optical tissue absorption physics, digital signal processing (DSP), and empirical sensor calibration workflows of a dual-wavelength transmission pulse oximeter.
+                    </p>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn btn-primary" data-jump-tab="tab-simulation">🔬 Launch 3D Simulation</button>
+                        <button class="btn btn-secondary" data-jump-tab="tab-circuit">⚡ Explore Circuit Lab</button>
+                        <button class="btn btn-secondary" data-jump-tab="tab-calibration">📈 Open Calibration Studio</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Cards -->
+            <div class="quick-action-grid">
+                <div class="action-card" data-jump-tab="tab-simulation">
+                    <div class="action-card-icon">🎮</div>
+                    <h3>Interactive 3D Virtual Lab</h3>
+                    <p>Rotate, zoom, and inspect a photorealistic 3D medical sensor clip, anatomical pulsating finger, LED optical ray scattering, and electronic circuit board.</p>
+                </div>
+
+                <div class="action-card" data-jump-tab="tab-circuit">
+                    <div class="action-card-icon">⚡</div>
+                    <h3>Block-Level Circuit Emulation</h3>
+                    <p>Tune Red & IR LED currents, adjust TIA amplifier gain, inject ambient light and noise, and test 8 to 16-bit ADC quantization.</p>
+                </div>
+
+                <div class="action-card" data-jump-tab="tab-calibration">
+                    <div class="action-card-icon">📈</div>
+                    <h3>Empirical Sensor Calibration</h3>
+                    <p>Step through the 9-step calibration workflow: capture synthetic signals, calculate the ratio-of-ratios R, fit calibration curves, and compute error metrics.</p>
+                </div>
+
+                <div class="action-card" data-jump-tab="tab-results">
+                    <div class="action-card-icon">📊</div>
+                    <h3>Experimental Results & Logs</h3>
+                    <p>Inspect recorded calibration and simulation trials, analyze error distributions, and export data in CSV, JSON, or printable report formats.</p>
+                </div>
+            </div>
+
+            <!-- Interactive Block Diagram: Signal Acquisition Chain -->
+            <div class="lab-card">
+                <div class="card-title">
+                    <span>📡 Biomedical Signal Acquisition Architecture</span>
+                    <span class="badge badge-info">End-to-End Conceptual Chain</span>
+                </div>
+                <div class="signal-chain-container">
+                    <div class="signal-node">
+                        <span class="signal-node-title">1. Optical Emitters</span>
+                        <span class="signal-node-desc">660nm Red & 940nm IR LEDs Multiplexed @ 500 Hz</span>
+                    </div>
+                    <div class="signal-arrow">➔</div>
+                    <div class="signal-node">
+                        <span class="signal-node-title">2. Vascular Tissue</span>
+                        <span class="signal-node-desc">Beer-Lambert Absorption & Arterial Pulsation</span>
+                    </div>
+                    <div class="signal-arrow">➔</div>
+                    <div class="signal-node">
+                        <span class="signal-node-title">3. Photodetector</span>
+                        <span class="signal-node-desc">Silicon PIN Diode (Optical to Current I_PD)</span>
+                    </div>
+                    <div class="signal-arrow">➔</div>
+                    <div class="signal-node">
+                        <span class="signal-node-title">4. TIA Pre-Amp</span>
+                        <span class="signal-node-desc">Transimpedance Amp (V_out = I_PD * R_f)</span>
+                    </div>
+                    <div class="signal-arrow">➔</div>
+                    <div class="signal-node">
+                        <span class="signal-node-title">5. Demux & Filter</span>
+                        <span class="signal-node-desc">Ambient Cancellation & Bandpass (0.5 - 8 Hz)</span>
+                    </div>
+                    <div class="signal-arrow">➔</div>
+                    <div class="signal-node">
+                        <span class="signal-node-title">6. PGA & ADC</span>
+                        <span class="signal-node-desc">Gain Scaling & 12-Bit Quantization</span>
+                    </div>
+                    <div class="signal-arrow">➔</div>
+                    <div class="signal-node">
+                        <span class="signal-node-title">7. Microcontroller</span>
+                        <span class="signal-node-desc">Ratio-of-Ratios (R) & Empirical SpO₂ Mapping</span>
+                    </div>
+                    <div class="signal-arrow">➔</div>
+                    <div class="signal-node">
+                        <span class="signal-node-title">8. OLED Readout</span>
+                        <span class="signal-node-desc">SpO₂, Pulse Rate & Pleth Wave Display</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pedagogical Learning Objectives -->
+            <div class="lab-card">
+                <div class="card-title">
+                    <span>🎯 Pedagogical Learning Objectives</span>
+                    <span class="badge badge-educational">BME Curriculum Standards</span>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; font-size:0.85rem; line-height:1.6;">
+                    <div>
+                        <strong style="color:var(--cyan-primary);">1. Optical Physics & Extinction:</strong>
+                        <p>Understand how Oxygenated Hemoglobin (HbO₂) and Deoxygenated Hemoglobin (Hb) differ in molar optical absorption at 660 nm (Red) versus 940 nm (Infrared).</p>
+                    </div>
+                    <div>
+                        <strong style="color:var(--cyan-primary);">2. Analog Signal Conditioning:</strong>
+                        <p>Observe how transimpedance amplifiers convert microampere optical currents to measurable voltages and how ambient light cancellation preserves signal fidelity.</p>
+                    </div>
+                    <div>
+                        <strong style="color:var(--cyan-primary);">3. Active Filtering & ADC Conversion:</strong>
+                        <p>Explore the role of active high-pass filters (DC blocking) and low-pass filters (anti-aliasing), alongside bit-depth quantization effects.</p>
+                    </div>
+                    <div>
+                        <strong style="color:var(--cyan-primary);">4. Empirical Sensor Calibration:</strong>
+                        <p>Learn why clinical pulse oximeters require empirical calibration curves rather than theoretical formulas alone, and compute real-world error metrics.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             TAB 2: CIRCUIT LAB
+             ================================================================ -->
+        <section id="tab-circuit" class="tab-pane">
+            <div class="workbench-layout-grid">
+                
+                <!-- LEFT COLUMN: Circuit Block Controls -->
+                <div class="col-controls">
+                    <!-- Optical Emitter Drivers -->
+                    <div class="lab-card">
+                        <div class="card-title">
+                            <span>💡 LED Emitter Drivers</span>
+                            <span class="badge badge-info">Stage 1</span>
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Red LED Drive Current (660 nm)</span>
+                                <span class="control-val" id="val-led-red">20.0 mA</span>
+                            </div>
+                            <input type="range" id="slider-led-red" class="slider-input" min="5" max="50" step="1" value="20">
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Infrared LED Drive Current (940 nm)</span>
+                                <span class="control-val" id="val-led-ir">20.0 mA</span>
+                            </div>
+                            <input type="range" id="slider-led-ir" class="slider-input" min="5" max="50" step="1" value="20">
+                        </div>
+                    </div>
+
+                    <!-- Amplifier Stage -->
+                    <div class="lab-card">
+                        <div class="card-title">
+                            <span>🎛️ Signal Conditioning Amplifier</span>
+                            <span class="badge badge-info">Stage 2 & 4</span>
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>TIA Feedback Resistor (R_f)</span>
+                                <span class="control-val" id="val-amp-rf">220.0 kΩ</span>
+                            </div>
+                            <input type="range" id="slider-amp-rf" class="slider-input" min="50" max="1000" step="10" value="220">
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>PGA Voltage Gain</span>
+                                <span class="control-val" id="val-amp-gain">35.0x</span>
+                            </div>
+                            <input type="range" id="slider-amp-gain" class="slider-input" min="1" max="100" step="1" value="35">
+                        </div>
+                    </div>
+
+                    <!-- Noise & Ambient Interference -->
+                    <div class="lab-card">
+                        <div class="card-title">
+                            <span>☀️ Noise & Ambient Light</span>
+                            <span class="badge badge-warning">Interference</span>
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Ambient Stray Light Level</span>
+                                <span class="control-val" id="val-ambient-lux">40.0 lux</span>
+                            </div>
+                            <input type="range" id="slider-ambient-lux" class="slider-input" min="0" max="100" step="5" value="40">
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Electrical Noise Level</span>
+                                <span class="control-val" id="val-circuit-noise">0.05</span>
+                            </div>
+                            <input type="range" id="slider-circuit-noise" class="slider-input" min="0" max="0.5" step="0.02" value="0.05">
+                        </div>
+
+                        <div class="control-item" style="margin-bottom:0;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.8rem;">
+                                <input type="checkbox" id="chk-ambient-cancel" checked style="accent-color:var(--cyan-primary);">
+                                <span>Enable Synchronous Ambient Cancellation</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- ADC & Sampling Discretization -->
+                    <div class="lab-card">
+                        <div class="card-title">
+                            <span>🔢 ADC Discretization</span>
+                            <span class="badge badge-info">Stage 6</span>
+                        </div>
+
+                        <div class="control-item">
+                            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">ADC Resolution (Bit Depth):</label>
+                            <select id="select-adc-bits" class="select-input">
+                                <option value="8">8-Bit (256 levels, ~12.89 mV step)</option>
+                                <option value="10">10-Bit (1024 levels, ~3.22 mV step)</option>
+                                <option value="12" selected>12-Bit (4096 levels, ~0.81 mV step)</option>
+                                <option value="16">16-Bit (65536 levels, ~0.05 mV step)</option>
+                            </select>
+                        </div>
+
+                        <div class="control-item">
+                            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">Sampling Rate:</label>
+                            <select id="select-sampling-rate" class="select-input">
+                                <option value="50">50 Hz (Anti-aliasing margin low)</option>
+                                <option value="100">100 Hz</option>
+                                <option value="250">250 Hz</option>
+                                <option value="500" selected>500 Hz (Standard medical oximeter)</option>
+                                <option value="1000">1000 Hz (High precision)</option>
+                            </select>
+                        </div>
+
+                        <div style="font-size:0.75rem; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:10px;">
+                            <span>Quantization Step (ΔV):</span>
+                            <strong style="color:var(--cyan-primary);" id="val-quantization-step">0.81 mV</strong>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT COLUMN: Multi-Channel Virtual Oscilloscope -->
+                <div class="col-visualizer">
+                    
+                    <!-- Oscilloscope Channel Selector -->
+                    <div class="lab-card" style="padding:12px 18px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <span style="font-weight:700; font-size:0.85rem; color:var(--text-bright);">🔬 Virtual Scope Test Point:</span>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button class="btn btn-sm btn-secondary" data-tp="tp1_rawPhotodiodeCurrent" data-tp-name="TP1: Raw Photodiode Current" data-min="0" data-max="50">TP1: I_PD</button>
+                                <button class="btn btn-sm btn-secondary" data-tp="tp2_tiaVoltage" data-tp-name="TP2: TIA Pre-Amp Output" data-min="0" data-max="3.5">TP2: V_TIA</button>
+                                <button class="btn btn-sm btn-secondary" data-tp="tp3_demuxRed" data-tp-name="TP3: Demux Red Channel" data-min="0" data-max="3.5">TP3: Demux</button>
+                                <button class="btn btn-sm btn-secondary active" data-tp="tp4_acRedFiltered" data-tp-name="TP4: Active Bandpass Output" data-min="0" data-max="3.3">TP4: Filtered</button>
+                                <button class="btn btn-sm btn-secondary" data-tp="tp6_adcRed" data-tp-name="TP5: ADC Quantized Output" data-min="0" data-max="3.5">TP5: ADC</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Oscilloscope Chart Container -->
+                    <div class="lab-card" style="height:360px;">
+                        <div class="card-title">
+                            <span>📈 Live Oscilloscope Waveform</span>
+                            <span class="badge badge-info">Real-Time Continuous Stream</span>
+                        </div>
+                        <div style="width:100%; height:280px; position:relative;">
+                            <canvas id="chart-circuit-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Mathematical Model Explanation Panel -->
+                    <div class="lab-card">
+                        <div class="card-title">
+                            <span>📐 Documented Mathematical Model</span>
+                            <span class="badge badge-educational">Simplified Physics</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; font-size:0.82rem; line-height:1.6;">
+                            <div>
+                                <strong style="color:var(--cyan-primary);">Photodiode Current (I_PD):</strong>
+                                <p style="font-family:var(--font-mono); color:var(--text-bright); margin:4px 0;">I_PD = ℛ_λ · P_trans + I_ambient + I_dark + I_noise</p>
+                                <p style="color:var(--text-muted);">Where ℛ_660 = 0.45 A/W and ℛ_940 = 0.65 A/W are silicon PIN quantum responsivities.</p>
+                            </div>
+
+                            <div>
+                                <strong style="color:var(--cyan-primary);">Transimpedance Voltage (V_TIA):</strong>
+                                <p style="font-family:var(--font-mono); color:var(--text-bright); margin:4px 0;">V_TIA = I_PD · R_f  (Clamped: 0.0V ≤ V ≤ 3.3V)</p>
+                                <p style="color:var(--text-muted);">Op-amp output rails saturate if optical power or feedback resistor R_f is driven too high.</p>
+                            </div>
+
+                            <div>
+                                <strong style="color:var(--cyan-primary);">Synchronous Ambient Cancellation:</strong>
+                                <p style="font-family:var(--font-mono); color:var(--text-bright); margin:4px 0;">V_demux = V_sample - V_dark</p>
+                                <p style="color:var(--text-muted);">Subtracts stray room lighting captured during the dark interleaving clock phase.</p>
+                            </div>
+
+                            <div>
+                                <strong style="color:var(--cyan-primary);">ADC Quantization:</strong>
+                                <p style="font-family:var(--font-mono); color:var(--text-bright); margin:4px 0;">V_ADC = round(V_in / V_ref · (2^N - 1)) · ΔV</p>
+                                <p style="color:var(--text-muted);">Demonstrates quantization noise when lowering bit-depth to 8-bit.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================================================================
+             TAB 3: CALIBRATION LAB (9-Step Interactive Workflow)
+             ================================================================ -->
+        <section id="tab-calibration" class="tab-pane">
+            
+            <!-- 9-Step Interactive Stepper Bar -->
+            <div class="workflow-stepper-bar">
+                <div class="workflow-step-pill active" data-goto-step="1">
+                    <span class="step-num">Step 1</span>
+                    <span class="step-name">Initialize</span>
+                </div>
+                <div class="workflow-step-pill" data-goto-step="2">
+                    <span class="step-num">Step 2</span>
+                    <span class="step-name">Select Ref</span>
+                </div>
+                <div class="workflow-step-pill" data-goto-step="3">
+                    <span class="step-num">Step 3</span>
+                    <span class="step-name">Capture</span>
+                </div>
+                <div class="workflow-step-pill" data-goto-step="4">
+                    <span class="step-num">Step 4</span>
+                    <span class="step-name">Ratio (R)</span>
+                </div>
+                <div class="workflow-step-pill" data-goto-step="5">
+                    <span class="step-num">Step 5</span>
+                    <span class="step-name">Coefficient</span>
+                </div>
+                <div class="workflow-step-pill" data-goto-step="6">
+                    <span class="step-num">Step 6</span>
+                    <span class="step-name">Compare</span>
+                </div>
+                <div class="workflow-step-pill" data-goto-step="7">
+                    <span class="step-num">Step 7</span>
+                    <span class="step-name">Errors</span>
+                </div>
+                <div class="workflow-step-pill" data-goto-step="8">
+                    <span class="step-num">Step 8</span>
+                    <span class="step-name">Save Run</span>
+                </div>
+                <div class="workflow-step-pill" data-goto-step="9">
+                    <span class="step-num">Step 9</span>
+                    <span class="step-name">Reset</span>
+                </div>
+            </div>
+
+            <div class="calibration-grid-layout">
+                
+                <!-- LEFT COLUMN: Active Step Action Card -->
+                <div class="col-controls">
+                    <div class="lab-card">
+                        
+                        <!-- Step 1 Card -->
+                        <div class="calib-step-card active" data-step="1">
+                            <div class="card-title">
+                                <span>1️⃣ Step 1: Initialize Simulation</span>
+                                <span class="badge badge-info">Setup</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Prepare the laboratory instrumentation. Verify that the sensor probe is clamped to vascular tissue, LED currents are balanced, and stable photoplethysmogram waveforms are acquired.
+                            </p>
+                            <div style="background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color); font-size:0.8rem; margin-bottom:14px;">
+                                <div>Status: <strong style="color:var(--green-success);">Sensor Connected & Optical Emitters Ready</strong></div>
+                                <div>Baseline Perfusion: <strong>2.5%</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 Card -->
+                        <div class="calib-step-card" data-step="2">
+                            <div class="card-title">
+                                <span>2️⃣ Step 2: Select Reference SpO₂ Value</span>
+                                <span class="badge badge-info">Target Setting</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Select a simulated arterial blood gas (ABG) co-oximeter reference value to emulate the gold-standard patient oxygen saturation:
+                            </p>
+                            <div class="control-item">
+                                <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">Reference Preset Points:</label>
+                                <select id="select-calib-ref" class="select-input">
+                                    <option value="98" selected>98.0% SpO₂ (Healthy Room Air)</option>
+                                    <option value="95">95.0% SpO₂ (Mild Hypoxemia Threshold)</option>
+                                    <option value="90">90.0% SpO₂ (Clinical Hypoxia Threshold)</option>
+                                    <option value="85">85.0% SpO₂ (Moderate Desaturation)</option>
+                                    <option value="80">80.0% SpO₂ (Severe Desaturation)</option>
+                                    <option value="75">75.0% SpO₂ (Critical Hypoxemia)</option>
+                                </select>
+                            </div>
+                            <div class="control-item">
+                                <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">Or Custom Reference SpO₂ (%):</label>
+                                <input type="number" id="input-calib-ref-custom" class="text-input" min="65" max="100" step="0.5" placeholder="e.g. 93.5">
+                            </div>
+                        </div>
+
+                        <!-- Step 3 Card -->
+                        <div class="calib-step-card" data-step="3">
+                            <div class="card-title">
+                                <span>3️⃣ Step 3: Capture Synthetic Red & IR Signals</span>
+                                <span class="badge badge-info">Signal Acquisition</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Records continuous pulsatile cycles and extracts peak-to-peak AC amplitudes (arterial blood volume modulation) and DC baseline levels (tissue, bone, venous blood absorption).
+                            </p>
+                            <div style="background:var(--bg-surface); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color); font-size:0.8rem; margin-bottom:14px;">
+                                <div>Capture Buffer: <strong>3.0 seconds (1500 samples @ 500 Hz)</strong></div>
+                                <div>Red Channel: <strong>AC_660 = 0.038 V | DC_660 = 1.25 V</strong></div>
+                                <div>IR Channel: <strong>AC_940 = 0.082 V | DC_940 = 1.30 V</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4 Card -->
+                        <div class="calib-step-card" data-step="4">
+                            <div class="card-title">
+                                <span>4️⃣ Step 4: Calculate Ratio-of-Ratios (R)</span>
+                                <span class="badge badge-info">Modulation Ratio</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Normalizes the optical modulation by calculating the ratio between the normalized Red AC/DC and normalized Infrared AC/DC components:
+                            </p>
+                            <div style="background:var(--bg-surface); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-bright); font-family:var(--font-mono); font-size:0.82rem; margin-bottom:14px;">
+                                <div style="color:var(--cyan-primary);">R = (AC_660 / DC_660) / (AC_940 / DC_940)</div>
+                                <div style="color:var(--text-normal); margin-top:4px;">Current R = <strong id="calib-disp-calc-r" style="color:var(--cyan-primary);">0.480</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- Step 5 Card -->
+                        <div class="calib-step-card" data-step="5">
+                            <div class="card-title">
+                                <span>5️⃣ Step 5: Enter Calibration Coefficients</span>
+                                <span class="badge badge-info">Equation Fitting</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Configure empirical calibration equation parameters (SpO₂ = A - B · R):
+                            </p>
+                            <div class="control-item">
+                                <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">Manufacturer Presets:</label>
+                                <select id="select-calib-coeff-preset" class="select-input">
+                                    <option value="standard" selected>Standard Commercial Linear (A=110.0, B=25.0)</option>
+                                    <option value="nellcor">Nellcor Empirical Preset (A=112.5, B=28.0)</option>
+                                    <option value="masimo">Masimo Low-Perfusion Curve (A=108.0, B=23.5)</option>
+                                </select>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                <div class="control-item">
+                                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">Intercept (A):</label>
+                                    <input type="number" id="input-coeff-a" class="text-input" value="110.0" step="0.5">
+                                </div>
+                                <div class="control-item">
+                                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:5px;">Slope (B):</label>
+                                    <input type="number" id="input-coeff-b" class="text-input" value="25.0" step="0.5">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 6 Card -->
+                        <div class="calib-step-card" data-step="6">
+                            <div class="card-title">
+                                <span>6️⃣ Step 6: Compare Estimated vs Reference</span>
+                                <span class="badge badge-info">Output Comparison</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Evaluates the estimated output computed by the calibration formula against the simulated target reference:
+                            </p>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+                                <div style="background:var(--bg-surface); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); text-align:center;">
+                                    <div style="font-size:0.75rem; color:var(--text-muted);">Simulated Reference</div>
+                                    <div style="font-size:1.6rem; font-weight:700; color:var(--text-bright);"><span id="calib-comp-ref">98.0</span>%</div>
+                                </div>
+                                <div style="background:var(--bg-surface); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); text-align:center;">
+                                    <div style="font-size:0.75rem; color:var(--text-muted);">Formula Estimated</div>
+                                    <div style="font-size:1.6rem; font-weight:700; color:var(--cyan-primary);"><span id="calib-comp-est">98.0</span>%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 7 Card -->
+                        <div class="calib-step-card" data-step="7">
+                            <div class="card-title">
+                                <span>7️⃣ Step 7: Error & Accuracy Analysis</span>
+                                <span class="badge badge-info">Error Grading</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Absolute error and percentage-point difference:
+                            </p>
+                            <div style="background:var(--bg-surface); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:14px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                    <span>Absolute Error:</span>
+                                    <strong id="calib-err-abs" style="color:var(--green-success);">0.00%</strong>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                    <span>Difference:</span>
+                                    <strong id="calib-err-diff">0.00 percentage pts</strong>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>Accuracy Classification:</span>
+                                    <span class="badge badge-success">Clinical Grade (≤ 2.0%)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 8 Card -->
+                        <div class="calib-step-card" data-step="8">
+                            <div class="card-title">
+                                <span>8️⃣ Step 8: Save Calibration Run</span>
+                                <span class="badge badge-success">Record</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Click below to record this calibration point into the master results table and plot it on the Reference vs Estimated SpO₂ graph.
+                            </p>
+                        </div>
+
+                        <!-- Step 9 Card -->
+                        <div class="calib-step-card" data-step="9">
+                            <div class="card-title">
+                                <span>9️⃣ Step 9: Experiment Completed / Reset</span>
+                                <span class="badge badge-info">Cycle Complete</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-normal); margin-bottom:14px;">
+                                Calibration run successfully logged. You can add another synthetic reference point (e.g. 85% or 90%) or reset the calibration sequence.
+                            </p>
+                        </div>
+
+                        <!-- Workflow Advance Button -->
+                        <div style="display:flex; gap:10px; margin-top:16px;">
+                            <button id="btn-calib-step-next" class="btn btn-primary" style="flex:1;">Proceed to Next Step ➔</button>
+                            <button id="btn-calib-reset" class="btn btn-secondary">↺ Restart</button>
+                        </div>
+
+                        <!-- Numerical Breakdown Summary -->
+                        <div class="calib-summary-box">
+                            <div class="summary-item">
+                                <label>Target Reference:</label>
+                                <span id="calib-disp-ref">98.0%</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Ratio-of-Ratios (R):</label>
+                                <span id="calib-disp-r">0.480</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Red AC/DC:</label>
+                                <span id="calib-disp-acdc-red">0.0304</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>IR AC/DC:</label>
+                                <span id="calib-disp-acdc-ir">0.0631</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Active Equation:</label>
+                                <span id="calib-disp-coeff">A=110, B=25</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Estimated SpO₂:</label>
+                                <span id="calib-disp-est">98.0%</span>
+                            </div>
+                            <div class="summary-item" style="grid-column: span 2;">
+                                <label>Absolute Error:</label>
+                                <span id="calib-disp-err" style="color:var(--green-success);">0.00%</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: Chart.js Calibration Plot -->
+                <div class="col-visualizer">
+                    <div class="lab-card" style="height:480px;">
+                        <div class="card-title">
+                            <span>📊 Calibration Curve: Reference vs Estimated SpO₂</span>
+                            <span class="badge badge-info">Chart.js Scatter Plot</span>
+                        </div>
+                        <div style="width:100%; height:400px; position:relative;">
+                            <canvas id="calibration-chart-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Educational Disclaimer Banner -->
+                    <div class="lab-card" style="background:rgba(245, 158, 11, 0.08); border-color:rgba(245, 158, 11, 0.4);">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:24px;">⚠️</span>
+                            <div style="font-size:0.8rem; color:#f59e0b;">
+                                <strong>Educational Synthetic Data Notice:</strong>
+                                All reference points and calibration outputs are simulated for pedagogical instruction. This software never calibrates, diagnoses, or interfaces with real medical equipment.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================================================================
+             TAB 4: SIMULATION (3D Lab + Real-Time PPG Waveforms)
+             ================================================================ -->
+        <section id="tab-simulation" class="tab-pane">
+            <div class="workbench-layout-grid">
+                
+                <!-- LEFT COLUMN: Patient & Simulation Controls -->
+                <div class="col-controls">
+                    
+                    <!-- Physiological Patient Parameters -->
+                    <div class="lab-card">
+                        <div class="card-title">
+                            <span>🩺 Virtual Patient Parameters</span>
+                            <span class="badge badge-info">Physiology</span>
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Simulated Blood Oxygen (SpO₂)</span>
+                                <span class="control-val" id="val-sim-spo2">98.0%</span>
+                            </div>
+                            <input type="range" id="slider-sim-spo2" class="slider-input" min="70" max="100" step="0.5" value="98">
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Simulated Pulse Rate</span>
+                                <span class="control-val" id="val-sim-bpm">75 BPM</span>
+                            </div>
+                            <input type="range" id="slider-sim-bpm" class="slider-input" min="40" max="180" step="1" value="75">
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Perfusion Index (PI %)</span>
+                                <span class="control-val" id="val-sim-pi">2.5%</span>
+                            </div>
+                            <input type="range" id="slider-sim-pi" class="slider-input" min="0.2" max="10.0" step="0.1" value="2.5">
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Signal Noise & Scattering</span>
+                                <span class="control-val" id="val-sim-noise">0.05</span>
+                            </div>
+                            <input type="range" id="slider-sim-noise" class="slider-input" min="0" max="0.5" step="0.02" value="0.05">
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Respiration Baseline Wander</span>
+                                <span class="control-val" id="val-sim-resp">14.0 Br/min</span>
+                            </div>
+                            <input type="range" id="slider-sim-resp" class="slider-input" min="6" max="30" step="1" value="14">
+                        </div>
+
+                        <div class="control-item">
+                            <div class="control-header">
+                                <span>Motion Artifact / Tremor</span>
+                                <span class="control-val" id="val-sim-motion">0.0</span>
+                            </div>
+                            <input type="range" id="slider-sim-motion" class="slider-input" min="0" max="1" step="0.05" value="0">
+                        </div>
+                    </div>
+
+                    <!-- Clinical Quick Presets -->
+                    <div class="lab-card">
+                        <div class="card-title">
+                            <span>📋 Clinical Presets</span>
+                            <span class="badge badge-info">Scenarios</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <button class="btn btn-sm btn-secondary" data-preset="preset-healthy">Normal (98%)</button>
+                            <button class="btn btn-sm btn-secondary" data-preset="preset-mild-hypoxia">Mild Hypoxia (88%)</button>
+                            <button class="btn btn-sm btn-secondary" data-preset="preset-severe-hypoxia">Severe (74%)</button>
+                            <button class="btn btn-sm btn-secondary" data-preset="preset-bradycardia">Bradycardia (48)</button>
+                            <button class="btn btn-sm btn-secondary" data-preset="preset-low-perfusion">Low Perfusion (0.4%)</button>
+                            <button class="btn btn-sm btn-secondary" data-preset="preset-ambient-hum">High Noise</button>
+                        </div>
+                    </div>
+
+                    <!-- Simulation Status & Live Point Logger -->
+                    <div class="lab-card">
+                        <div class="card-title">
+                            <span>⏱️ Simulation Telemetry</span>
+                            <span class="badge badge-success">Live</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); display:flex; justify-content:space-between; margin-bottom:12px;">
+                            <span>Elapsed Duration:</span>
+                            <strong style="color:var(--text-bright);" id="sim-duration-display">00:00</strong>
+                        </div>
+                        <button id="btn-record-live-run" class="btn btn-primary" style="width:100%;">📥 Record Current Point</button>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT COLUMN: 3D Lab Viewport & Continuous PPG Waveforms -->
+                <div class="col-visualizer">
+                    
+                    <!-- 3D VIRTUAL LABORATORY WORKSPACE -->
+                    <div class="viewport-3d-box">
+                        <div id="webgl-3d-viewport" class="viewport-canvas-container"></div>
+
+                        <!-- Top HUD Overlay: Camera Presets & Disclaimer -->
+                        <div class="viewport-overlay-controls">
+                            <div class="camera-preset-bar">
+                                <button class="camera-btn active" data-camera-preset="BENCH">🌐 Full Bench</button>
+                                <button class="camera-btn" data-camera-preset="SENSOR">🔬 Sensor Clip</button>
+                                <button class="camera-btn" data-camera-preset="CIRCUIT">⚡ Circuit PCB</button>
+                                <button class="camera-btn" data-camera-preset="OLED">🖥️ OLED Display</button>
+                                <button class="camera-btn" data-camera-preset="TOP">📐 Top View</button>
+                            </div>
+                            <div class="viewport-disclaimer-pill">⚠️ Educational Conceptual 3D Model</div>
+                        </div>
+
+                        <!-- Floating Component Inspection Card (Raycasting) -->
+                        <div id="inspector-panel-3d" class="inspector-card-floating">
+                            <h4>
+                                <span id="inspector-comp-title">Component Name</span>
+                                <button id="btn-close-inspector" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer;">✕</button>
+                            </h4>
+                            <p id="inspector-comp-desc">Click on any component (clip, finger, LEDs, photodiode, amplifier, ADC, microcontroller, OLED display, or wires) to inspect its instrumentation role.</p>
+                        </div>
+
+                        <!-- Bottom HUD Controls: 3D Sliders -->
+                        <div class="viewport-bottom-controls">
+                            <div class="slider-inline-group">
+                                <label>
+                                    <span>X-Ray Opacity:</span>
+                                    <input type="range" id="slider-3d-skin-opacity" min="0.1" max="1.0" step="0.05" value="0.65">
+                                </label>
+                                <label>
+                                    <span>Clip Clamp:</span>
+                                    <input type="range" id="slider-3d-clip-angle" min="0" max="25" step="1" value="0">
+                                </label>
+                                <label>
+                                    <span>Exploded View:</span>
+                                    <input type="range" id="slider-3d-exploded" min="0" max="1" step="0.05" value="0">
+                                </label>
+                            </div>
+                            <span style="font-size:0.7rem; color:var(--text-muted);">🖱️ Left Click: Rotate | Right Click: Pan | Scroll: Zoom</span>
+                        </div>
+                    </div>
+
+                    <!-- REAL-TIME CHART.JS CONTINUOUS WAVEFORMS -->
+                    <div class="charts-grid-layout">
+                        
+                        <!-- Chart 1: Red Channel Waveform -->
+                        <div class="chart-wrapper">
+                            <div class="chart-header-row">
+                                <span style="color:var(--red-channel);">🔴 Red Channel (660 nm)</span>
+                                <span style="color:var(--text-muted); font-size:0.7rem;">AC Pulsatile + DC Tissue Baseline</span>
+                            </div>
+                            <div class="chart-canvas-box">
+                                <canvas id="chart-red-canvas"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 2: Infrared Channel Waveform -->
+                        <div class="chart-wrapper">
+                            <div class="chart-header-row">
+                                <span style="color:var(--ir-channel);">🔵 Infrared Channel (940 nm)</span>
+                                <span style="color:var(--text-muted); font-size:0.7rem;">AC Pulsatile + DC Tissue Baseline</span>
+                            </div>
+                            <div class="chart-canvas-box">
+                                <canvas id="chart-ir-canvas"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 3: Combined Processed PPG Waveform -->
+                        <div class="chart-wrapper" style="grid-column: span 2;">
+                            <div class="chart-header-row">
+                                <span style="color:var(--cyan-primary);">📈 Processed Plethysmograph (PPG) Waveform</span>
+                                <span style="color:var(--text-muted); font-size:0.7rem;">Systolic Ejection Peak, Dicrotic Notch & Diastolic Wave</span>
+                            </div>
+                            <div class="chart-canvas-box">
+                                <canvas id="chart-ppg-canvas"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================================================================
+             TAB 5: RESULTS & DATA EXPORT
+             ================================================================ -->
+        <section id="tab-results" class="tab-pane">
+            
+            <!-- Summary Statistics Cards -->
+            <div class="stats-card-row">
+                <div class="stat-box">
+                    <span class="stat-box-title">Total Recorded Trials</span>
+                    <span class="stat-box-num" id="stat-total-runs">4</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-box-title">Mean Absolute Error</span>
+                    <span class="stat-box-num" id="stat-mean-error">±0.05%</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-box-title">Maximum Error</span>
+                    <span class="stat-box-num" id="stat-max-error">±0.20%</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-box-title">Average Signal Quality</span>
+                    <span class="stat-box-num" id="stat-mean-sqi">96%</span>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="results-header-actions">
+                <div style="display:flex; gap:6px;">
+                    <button class="btn btn-sm btn-secondary active" data-filter-results="ALL">All Trials</button>
+                    <button class="btn btn-sm btn-secondary" data-filter-results="CALIBRATION">Calibration Only</button>
+                    <button class="btn btn-sm btn-secondary" data-filter-results="SIMULATION">Simulation Only</button>
+                </div>
+
+                <div style="display:flex; gap:8px;">
+                    <button id="btn-export-csv" class="btn btn-sm btn-primary">📄 Export CSV</button>
+                    <button id="btn-export-json" class="btn btn-sm btn-secondary">💾 Export JSON</button>
+                    <button id="btn-print-report" class="btn btn-sm btn-secondary">🖨️ Print Lab Report</button>
+                    <button id="btn-clear-results" class="btn btn-sm btn-danger">🗑️ Clear Table</button>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Trial ID</th>
+                            <th>Experiment Mode</th>
+                            <th>Time</th>
+                            <th>Reference SpO₂</th>
+                            <th>Estimated SpO₂</th>
+                            <th>Abs Error</th>
+                            <th>Pulse Rate</th>
+                            <th>Ratio (R)</th>
+                            <th>Signal Quality</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table-body">
+                        <!-- Populated dynamically by app.js -->
+                    </tbody>
+                </table>
+            </div>
+
+        </section>
+
+        <!-- ================================================================
+             TAB 6: ABOUT & BIOMEDICAL THEORY
+             ================================================================ -->
+        <section id="tab-about" class="tab-pane">
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                
+                <!-- Project Overview -->
+                <div class="lab-card">
+                    <div class="card-title">
+                        <span>📖 About the Project</span>
+                        <span class="badge badge-info">Biomedical Instrumentation</span>
+                    </div>
+                    <p style="font-size:0.9rem; line-height:1.7; color:var(--text-normal);">
+                        The <strong>SpO₂ Circuit Emulation and Calibration 3D Virtual Laboratory</strong> is an open-source educational platform designed for biomedical engineering students, electrical engineers, and medical instrumentation researchers. It provides an intuitive, hands-on environment to understand non-invasive pulse oximetry principles from the photophysics of hemoglobin to transistor-level signal conditioning and clinical calibration curves.
+                    </p>
+                </div>
+
+                <!-- Beer-Lambert Optical Physics -->
+                <div class="lab-card">
+                    <div class="card-title">
+                        <span>🔬 Beer-Lambert Law & Dual-Wavelength Photophysics</span>
+                        <span class="badge badge-educational">Fundamental Theory</span>
+                    </div>
+                    <p style="font-size:0.85rem; line-height:1.7; color:var(--text-normal); margin-bottom:14px;">
+                        Transmission pulse oximetry relies on the differential optical absorption of oxygenated hemoglobin (HbO₂) and deoxygenated hemoglobin (Hb) across two specific electromagnetic wavelengths:
+                    </p>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div style="background:var(--bg-surface); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                            <h4 style="color:var(--red-channel); margin-bottom:6px;">🔴 Red Channel (Nominal 660 nm)</h4>
+                            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">
+                                Deoxygenated hemoglobin (Hb) absorbs roughly <strong>10 times more light</strong> at 660 nm (ε_Hb = 0.810) than oxygenated hemoglobin (ε_HbO₂ = 0.080). Consequently, as blood desaturates, Red light attenuation increases markedly.
+                            </p>
+                        </div>
+                        <div style="background:var(--bg-surface); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                            <h4 style="color:var(--ir-channel); margin-bottom:6px;">🔵 Infrared Channel (Nominal 940 nm)</h4>
+                            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">
+                                Oxygenated hemoglobin (HbO₂) exhibits higher optical absorption at 940 nm (ε_HbO₂ = 0.290) than deoxygenated hemoglobin (ε_Hb = 0.180). This wavelength provides a reliable reference for total pulsatile blood volume.
+                            </p>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg-surface); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-bright); font-family:var(--font-mono); font-size:0.85rem;">
+                        <div style="color:var(--cyan-primary);">Beer-Lambert Equation: I(t) = I₀ · 10^(-[ε_Hb·C_Hb + ε_HbO₂·C_HbO₂]·L(t))</div>
+                        <div style="color:var(--text-normal); margin-top:4px;">Modulation Ratio: R = [(AC_660 / DC_660) / (AC_940 / DC_940)]</div>
+                    </div>
+                </div>
+
+                <!-- Circuit Architecture -->
+                <div class="lab-card">
+                    <div class="card-title">
+                        <span>⚡ Electronic Signal Conditioning Architecture</span>
+                        <span class="badge badge-info">Hardware Design</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; font-size:0.85rem; line-height:1.6;">
+                        <div>
+                            <strong style="color:var(--cyan-primary);">Transimpedance Pre-Amplifier (TIA):</strong>
+                            <p>Photodiodes operate in photovoltaic or photoconductive modes producing microamperes. A high-gain op-amp with feedback resistor R_f (50 kΩ - 1 MΩ) and compensation capacitor C_f translates this current into a measurable voltage.</p>
+                        </div>
+                        <div>
+                            <strong style="color:var(--cyan-primary);">Synchronous Demodulation:</strong>
+                            <p>Stray room lighting (such as 50Hz/60Hz fluorescent hum or sunlight) is subtracted by pulsing the LEDs alternately and capturing dark-phase baseline noise.</p>
+                        </div>
+                        <div>
+                            <strong style="color:var(--cyan-primary);">Active Bandpass Filtering:</strong>
+                            <p>A 1st-order active high-pass filter (fc ≈ 0.5 Hz) eliminates large DC tissue offsets without phase-distorting the pulse wave, followed by a 2nd-order Sallen-Key low-pass filter (fc ≈ 8 Hz) for anti-aliasing.</p>
+                        </div>
+                        <div>
+                            <strong style="color:var(--cyan-primary);">Analog-to-Digital Conversion:</strong>
+                            <p>A 12-bit SAR ADC samples the AC PPG signal at 500 Hz, achieving sufficient dynamic range to resolve perfusion indices down to 0.2%.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clinical Caveats & Disclaimers -->
+                <div class="lab-card" style="border-color:rgba(245, 158, 11, 0.4);">
+                    <div class="card-title">
+                        <span style="color:var(--amber-accent);">⚠️ Educational Disclaimer & Clinical Caveats</span>
+                        <span class="badge badge-warning">Important Notice</span>
+                    </div>
+                    <p style="font-size:0.85rem; line-height:1.6; color:var(--text-normal); margin-bottom:10px;">
+                        This virtual laboratory is strictly an <strong>educational simulation tool</strong> developed for engineering pedagogy. It is <strong>NOT</strong> a certified medical device and must never be utilized for patient diagnosis, therapeutic decisions, or medical monitoring.
+                    </p>
+                    <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">
+                        Real-world pulse oximetry is subject to limitations including motion artifacts, hypoperfusion, severe vasoconstriction, abnormal hemoglobins (carboxyhemoglobin, methemoglobin), and ambient optical interference that are modeled here in simplified mathematical form.
+                    </p>
+                </div>
+
+                <!-- Academic Metadata -->
+                <div class="lab-card">
+                    <div class="card-title">
+                        <span>🏛️ Developer & Institutional Attribution</span>
+                        <span class="badge badge-info">Virtual Labs Compliance</span>
+                    </div>
+                    <div style="font-size:0.85rem; line-height:1.8; color:var(--text-normal);">
+                        <div><strong>Developer:</strong> Pramod Yadav</div>
+                        <div><strong>Institute:</strong> Rajkiya Engineering College Banda (REC Banda)</div>
+                        <div><strong>Department:</strong> Information Technology</div>
+                        <div><strong>Repository:</strong> <a href="https://github.com/yadavpramod7274-prog/pulse-oximatryvatual-lab" target="_blank" style="color:var(--cyan-primary); text-decoration:none;">github.com/yadavpramod7274-prog/pulse-oximatryvatual-lab</a></div>
+                        <div><strong>Technology Stack:</strong> HTML5, CSS3, Vanilla JavaScript (ES6+), Three.js (WebGL), Chart.js</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ====================================================================
+         MODALS: BEGINNER INSTRUCTIONS & EXPORT
+         ==================================================================== -->
+    
+    <!-- Instructions Modal -->
+    <div id="modal-instructions" class="modal-overlay">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>📖 Beginner Laboratory Guide</h3>
+                <button id="btn-close-help" class="btn-close-modal">✕</button>
+            </div>
+            <div class="modal-body" style="font-size:0.85rem; line-height:1.7;">
+                <p>Welcome to the SpO₂ Circuit Emulation and Calibration Virtual Lab! Follow these 4 quick steps to explore the experiment:</p>
+                <ol style="margin-left:20px; margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+                    <li><strong>Simulation Tab:</strong> Adjust simulated SpO₂ (70% - 100%) and Pulse Rate sliders. Observe the 3D model and real-time Red/IR PPG waveforms update live.</li>
+                    <li><strong>3D Controls:</strong> Drag with left-click to rotate, right-click to pan, and scroll to zoom. Click on any 3D component (clip, finger, amplifier, ADC, MCU, or OLED) to view its technical specifications.</li>
+                    <li><strong>Circuit Lab:</strong> Test how increasing amplifier gain, noise, or lowering ADC bit depth impacts waveform distortion and quantization error.</li>
+                    <li><strong>Calibration Tab:</strong> Step through the 9-step calibration workflow to capture synthetic signals, calculate the modulation ratio R, and fit an empirical curve.</li>
+                </ol>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="document.getElementById('modal-instructions').style.display='none';">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="modal-export" class="modal-overlay">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>📥 Export Experimental Results</h3>
+                <button id="btn-close-export" class="btn-close-modal">✕</button>
+            </div>
+            <div class="modal-body" style="font-size:0.85rem; line-height:1.6;">
+                <p>Select your desired data export format for laboratory submission or analysis:</p>
+                <div style="display:flex; flex-direction:column; gap:12px; margin-top:16px;">
+                    <div style="background:var(--bg-surface); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong>CSV Spreadsheet Format</strong>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">Tabular dataset compatible with Excel, Python, or MATLAB</div>
+                        </div>
+                        <button class="btn btn-sm btn-primary" onclick="document.getElementById('btn-export-csv').click();">Download CSV</button>
+                    </div>
+
+                    <div style="background:var(--bg-surface); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong>JSON Data Object</strong>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">Structured JSON format with full experiment metadata</div>
+                        </div>
+                        <button class="btn btn-sm btn-secondary" onclick="document.getElementById('btn-export-json').click();">Download JSON</button>
+                    </div>
+
+                    <div style="background:var(--bg-surface); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong>Printable Lab Report</strong>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">Formatted PDF report ready for grading and laboratory records</div>
+                        </div>
+                        <button class="btn btn-sm btn-secondary" onclick="window.print();">Print / PDF</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('modal-export').style.display='none';">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         SCRIPTS: THREE.JS, CHART.JS & LAB SUBSYSTEMS
+         ==================================================================== -->
+    
+    <!-- Three.js (CDN with local fallback) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>window.THREE || document.write('<script src="js/lib/three.min.js"><\/script>')</script>
+
+    <!-- OrbitControls (CDN with local fallback) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>window.THREE?.OrbitControls || document.write('<script src="js/lib/OrbitControls.js"><\/script>')</script>
+
+    <!-- Chart.js (CDN with local fallback) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>window.Chart || document.write('<script src="js/lib/chart.umd.min.js"><\/script>')</script>
+
+    <!-- Laboratory Subsystem Modules -->
+    <script src="js/physics-engine.js"></script>
+    <script src="js/circuit-emulator.js"></script>
+    <script src="js/dsp-processor.js"></script>
+    <script src="js/audio-synthesizer.js"></script>
+    <script src="js/virtual-lab-3d.js"></script>
+    <script src="js/charts-manager.js"></script>
+    <script src="js/calibration-studio.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

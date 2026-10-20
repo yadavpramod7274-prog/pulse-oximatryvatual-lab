@@ -1,11 +1,5 @@
-EMPTY
-<!-- Remove all lines above this line before making changes to the file -->
-### Subject Matter Experts
-| SNo. | Name | Email | Institute | ID |
-| :---: | :---: | :---: | :---: | :---: |
-| 1 | name | email | institute | id |
+### Contributors List
 
-### Developers
-| SNo. | Name | Email | Institute | ID |
-| :---: | :---: | :---: | :---: | :---: |
-| 1 | name | email | institute | id |
+| SrNo | Name | Faculty or Student | Department | Institute | Email ID |
+|:-----|:-----|:-------------------|:-----------|:----------|:---------|
+| 1 | Pramod Yadav | Student | Information Technology | Rajkiya Engineering College Banda | 2507340130044@recbanda.ac.in |

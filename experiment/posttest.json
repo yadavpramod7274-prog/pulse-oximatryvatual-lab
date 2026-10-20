@@ -2,38 +2,55 @@
   "version": 2.0,
   "questions": [
     {
-      "question": "This is a Sample Question 1?",
+      "question": "How is the Modulation Ratio-of-Ratios (R) mathematically defined in pulse oximetry?",
       "answers": {
-        "a": "answer1",
-        "b": "answer2",
-        "c": "answer3",
-        "d": "answer4"
+        "a": "R = (DC_660 / AC_660) * (DC_940 / AC_940)",
+        "b": "R = [(AC_660 / DC_660)] / [(AC_940 / DC_940)]",
+        "c": "R = AC_660 - AC_940",
+        "d": "R = (660 nm / 940 nm) * 100%"
       },
       "explanations": {
-        "a": "Explanation 1  <a href='www.google.com'>here</a>",
-        "b": "Explanation 2",
-        "c": "Explanation 2",
-        "d": "Explanation 2"
+        "a": "Incorrect. The ratio normalizes AC by DC.",
+        "b": "Correct. R is the normalized optical modulation of Red divided by Infrared.",
+        "c": "Incorrect. Subtraction does not normalize pathlength or emitter intensity differences.",
+        "d": "Incorrect. Wavelength ratio does not measure physiological absorption."
       },
-      "correctAnswer": "a",
-      "difficulty": "beginner"
+      "correctAnswer": "b",
+      "difficulty": "intermediate"
     },
     {
-      "question": "This is a Sample Question 2?",
+      "question": "Why do commercial pulse oximeters use empirical calibration curves rather than theoretical Beer-Lambert formulas alone?",
       "answers": {
-        "a": "answer1",
-        "b": "answer2",
-        "c": "answer3",
-        "d": "answer4"
+        "a": "Because LEDs cannot emit pure single-frequency wavelengths",
+        "b": "Because biological tissue induces severe multiple optical scattering not modeled by simple Beer-Lambert absorption",
+        "c": "Because microcontrollers lack computational power to divide numbers",
+        "d": "Because arterial blood does not contain hemoglobin"
       },
       "explanations": {
-        "a": "Explanation 1  <a href='www.google.com'>here</a>",
-        "b": "Explanation 2",
-        "c": "Explanation 2",
-        "d": "Explanation 2"
+        "a": "Incorrect. LED spectral width is a minor secondary factor.",
+        "b": "Correct. Rayleigh and Mie optical scattering through vascular tissue cause significant deviations requiring empirical calibration.",
+        "c": "Incorrect. Embedded microcontrollers easily perform floating-point divisions.",
+        "d": "Incorrect. Blood contains high concentrations of hemoglobin."
       },
-      "correctAnswer": "c",
-      "difficulty": "beginner"
+      "correctAnswer": "b",
+      "difficulty": "advanced"
+    },
+    {
+      "question": "If an op-amp in the Transimpedance Amplifier stage saturates at +3.3V power rails, what happens to the estimated SpO₂?",
+      "answers": {
+        "a": "SpO₂ remains 100% accurate because op-amps are ideal",
+        "b": "Signal clipping destroys the true AC peak-to-peak amplitude, causing severe estimation errors or invalid readings",
+        "c": "The heart rate automatically doubles",
+        "d": "The LEDs switch wavelengths automatically"
+      },
+      "explanations": {
+        "a": "Incorrect. Real op-amps have physical power rails that clip signals.",
+        "b": "Correct. Rail clipping flattens peak amplitudes, invalidating the AC/DC ratio R and corrupting the SpO₂ calculation.",
+        "c": "Incorrect. Cardiac pacing is biological.",
+        "d": "Incorrect. LED drive circuitry is independent of amplifier saturation."
+      },
+      "correctAnswer": "b",
+      "difficulty": "intermediate"
     }
   ]
 }
